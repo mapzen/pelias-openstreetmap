@@ -30,8 +30,27 @@ module.exports = function(){
         return next( null, doc );
       }
 
-      // Unfortunately we need to iterate over every tag,
-      // so we only do the iteration once to save CPU.
+      // handle the most likely source of name.default first
+      const trimmed_name = trim(tags.name);
+      if (trimmed_name) {
+        doc.setName('default', trimmed_name);
+      }
+
+      // check the other tags that might go into name.default second
+      Object.entries(NAME_SCHEMA).forEach(([key, value]) => {
+        if (value === 'default' && key !== 'name') {
+          const trimmed_value = trim(tags[key]);
+          if (trimmed_value)  {
+            if (!trimmed_name ) {
+              doc.setName('default', trim( tags[key]));
+            } else {
+              doc.setNameAlias('default', trim( tags[key]));
+            }
+          }
+        }
+      });
+
+      // iterate through all tags, catching any address/localized names
       for( var tag in tags ){
 
         // Map localized names which begin with 'name:'
@@ -41,20 +60,6 @@ module.exports = function(){
           var val1 = trim( tags[tag] );
           if( val1 ){
             doc.setName( suffix, val1 );
-          }
-        }
-
-        // Map name data from our name mapping schema
-        else if( tag in NAME_SCHEMA ){
-          var val2 = trim( tags[tag] );
-          if( val2 ){
-            if( tag === NAME_SCHEMA._primary ){
-              doc.setName( NAME_SCHEMA[tag], val2 );
-            } else if ( 'default' === NAME_SCHEMA[tag] ) {
-              doc.setNameAlias( NAME_SCHEMA[tag], val2 );
-            } else {
-              doc.setName( NAME_SCHEMA[tag], val2 );
-            }
           }
         }
 
